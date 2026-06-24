@@ -1,0 +1,22 @@
+services:
+  intel_daily:
+    build: .
+    container_name: intel_daily
+    ports:
+      - "8000:8000"
+    environment:
+      LLM_BACKEND: ${LLM_BACKEND:-ollama}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_RESEARCHER_MODEL: ${OLLAMA_RESEARCHER_MODEL:-qwen-intel}
+      OLLAMA_EDITOR_MODEL: ${OLLAMA_EDITOR_MODEL:-qwen-intel}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GEMINI_RESEARCHER_MODEL: ${GEMINI_RESEARCHER_MODEL:-gemini-2.5-flash}
+      GEMINI_EDITOR_MODEL: ${GEMINI_EDITOR_MODEL:-gemini-2.5-flash}
+      LOOKBACK_WINDOW: ${LOOKBACK_WINDOW:-past 7 days}
+      RECIPIENT_EMAIL: ${RECIPIENT_EMAIL:-daniel@luckyhands.com}
+    volumes:
+      - ./output:/app/output
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
