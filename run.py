@@ -1,4 +1,5 @@
 import asyncio
+import os
 import sys
 import webbrowser
 from datetime import datetime, timezone
@@ -15,10 +16,24 @@ from render import render_email, write_output, write_qa
 
 
 def _date_str() -> str:
-    return datetime.now(tz=timezone.utc).astimezone().strftime("%B %d, %Y")
+    from dates import us_date_long
+    return us_date_long()
 
 
 def _issue_number(success: bool) -> int:
+    """Return the issue number for this run.
+
+    Production: maintained by .issue_counter, incremented on success.
+    Test override: set INTEL_DAILY_ISSUE_OVERRIDE to use a fixed issue (e.g. 0
+    for a smoke test) without bumping the persistent counter.
+    """
+    override = os.getenv("INTEL_DAILY_ISSUE_OVERRIDE", "").strip()
+    if override != "":
+        try:
+            return int(override)
+        except ValueError:
+            pass
+
     state_file = Path(__file__).parent / ".issue_counter"
     current = 0
     if state_file.exists():
@@ -29,32 +44,45 @@ def _issue_number(success: bool) -> int:
     if success:
         current += 1
         state_file.write_text(str(current))
-    return max(current, 1)
+    return current
 
 
-async def _run_pipeline(date_str: str) -> tuple[str, str]:
-    from config import LLM_BACKEND, OLLAMA_BASE_URL, OLLAMA_EDITOR_MODEL, OLLAMA_RESEARCHER_MODEL
+async def _run_pipeline(date_str: str) -> tuple[str, str, dict]:
+    from config import (
+        EDITOR_BACKEND,
+        GEMINI_EDITOR_MODEL,
+        OLLAMA_BASE_URL,
+        OLLAMA_EDITOR_MODEL,
+        OLLAMA_RESEARCHER_MODEL,
+        RESEARCHER_BACKEND,
+    )
 
-    if LLM_BACKEND == "gemini":
-        if not GOOGLE_API_KEY:
-            raise RuntimeError(
-                "LLM_BACKEND=gemini but GOOGLE_API_KEY is not set. "
-                "Get a free key at https://aistudio.google.com/apikey and put it in .env"
-            )
-    else:
+    needs_gemini = EDITOR_BACKEND == "gemini" or RESEARCHER_BACKEND == "gemini"
+    needs_ollama = EDITOR_BACKEND == "ollama" or RESEARCHER_BACKEND == "ollama"
+
+    if needs_gemini and not GOOGLE_API_KEY:
+        raise RuntimeError(
+            "Gemini editor or researcher requested but GOOGLE_API_KEY is not set. "
+            "Get a free key at https://aistudio.google.com/apikey and put it in .env"
+        )
+
+    if needs_ollama:
         import httpx
 
         try:
             httpx.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=3.0).raise_for_status()
         except Exception as exc:
             raise RuntimeError(
-                f"LLM_BACKEND=ollama but Ollama is not reachable at {OLLAMA_BASE_URL}. "
+                f"Ollama is not reachable at {OLLAMA_BASE_URL}. "
                 f"Install Ollama from https://ollama.com, start it, and pull the models. "
                 f"`ollama pull {OLLAMA_RESEARCHER_MODEL}` "
                 f"`ollama pull {OLLAMA_EDITOR_MODEL}`. "
                 f"Underlying error, {exc}"
             )
-        print(f"using Ollama at {OLLAMA_BASE_URL}, researcher={OLLAMA_RESEARCHER_MODEL}, editor={OLLAMA_EDITOR_MODEL}")
+
+    researcher_label = OLLAMA_RESEARCHER_MODEL if RESEARCHER_BACKEND == "ollama" else GEMINI_EDITOR_MODEL
+    editor_label = OLLAMA_EDITOR_MODEL if EDITOR_BACKEND == "ollama" else GEMINI_EDITOR_MODEL
+    print(f"researcher backend={RESEARCHER_BACKEND}/{researcher_label}, editor backend={EDITOR_BACKEND}/{editor_label}")
 
     from google.adk.runners import Runner
     from google.adk.sessions import InMemorySessionService
@@ -121,7 +149,19 @@ async def _run_pipeline(date_str: str) -> tuple[str, str]:
             f"## Footer\n\nReply to this email with corrections. Corrections train the next brief.\n"
             "Not legal advice. Verify any regulatory item with counsel before acting on it.\n"
         )
-    return brief_md, verification
+    findings = {
+        k: state.get(k, "") for k in (
+            "regulatory_findings",
+            "competitor_findings",
+            "market_findings",
+            "legiscan_findings",
+            "rss_findings",
+            "federal_register_findings",
+            "courtlistener_findings",
+            "sentiment_findings",
+        )
+    }
+    return brief_md, verification, findings
 
 
 def _subject_from_md(brief_md: str, date_str: str) -> str:
@@ -149,9 +189,10 @@ def cmd_build(open_after: bool = False, send_after: bool = False) -> None:
     date_str = _date_str()
     last_exc = None
     brief_md = verification = None
+    findings = {}
     for attempt in range(5):
         try:
-            brief_md, verification = asyncio.run(_run_pipeline(date_str))
+            brief_md, verification, findings = asyncio.run(_run_pipeline(date_str))
             break
         except BaseException as exc:
             msg = repr(exc) + " " + str(exc)
@@ -166,12 +207,21 @@ def cmd_build(open_after: bool = False, send_after: bool = False) -> None:
     if brief_md is None:
         raise last_exc if last_exc else RuntimeError("pipeline failed after 5 attempts")
 
+    from agents import _sanitize_brief, enforce_voice_rules
+    from dates import us_date_slug
+
+    sanitized_md, _sanitize_warnings = _sanitize_brief(brief_md, findings)
+    cleaned_md = enforce_voice_rules(sanitized_md)
+
     issue = _issue_number(success=True)
-    html = render_email(brief_md, date_str, issue)
+    html = render_email(cleaned_md, date_str, issue)
     out_path = write_output(html, date_str)
-    qa_path = write_qa(verification, brief_md, date_str)
+    qa_path = write_qa(verification, cleaned_md, date_str)
+    md_path = out_path.parent / f"brief_pipeline_{us_date_slug()}.md"
+    md_path.write_text(cleaned_md, encoding="utf-8")
     print(f"wrote {out_path}")
     print(f"wrote {qa_path}")
+    print(f"wrote {md_path}")
 
     if open_after:
         url = f"file://{out_path.resolve()}"
@@ -193,11 +243,15 @@ def main() -> None:
         cmd_build(open_after=True, send_after=False)
     elif cmd == "send":
         cmd_build(open_after=False, send_after=True)
+    elif cmd == "slack":
+        os.environ["INTEL_DAILY_NO_BROWSER"] = "1"
+        cmd_build(open_after=False, send_after=False)
     else:
-        print("usage, python run.py [build|preview|send]")
+        print("usage, python run.py [build|preview|send|slack]")
         print("  build    run ADK pipeline, write HTML, no browser, no email")
         print("  preview  run ADK pipeline, write HTML, open in browser, no email")
         print("  send     run ADK pipeline, write HTML, send email to recipient")
+        print("  slack    run ADK pipeline, post brief to Slack channel, no browser, no email")
         sys.exit(1)
 
 

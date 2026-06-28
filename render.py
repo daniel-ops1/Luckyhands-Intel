@@ -63,7 +63,7 @@ def _markdown_to_html(md: str) -> str:
         in_para = False
 
     section_type = None
-    paragraph_sections = {"top story", "footer"}
+    paragraph_sections = {"top story", "footer", "1. top story", "9. footer"}
 
     for raw in md.splitlines():
         line = raw.rstrip()

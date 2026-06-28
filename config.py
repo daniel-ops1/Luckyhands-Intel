@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 LLM_BACKEND = os.getenv("LLM_BACKEND", "ollama").lower()
+RESEARCHER_BACKEND = os.getenv("RESEARCHER_BACKEND", LLM_BACKEND).lower()
+EDITOR_BACKEND = os.getenv("EDITOR_BACKEND", LLM_BACKEND).lower()
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
 GEMINI_RESEARCHER_MODEL = os.getenv("GEMINI_RESEARCHER_MODEL", "gemini-2.5-flash")

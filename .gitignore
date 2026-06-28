@@ -17,6 +17,8 @@ output/
 .issue_counter
 .adk/
 adk_agents/*/.adk/
+cache.db
+cache.db-journal
 
 # OS junk
 .DS_Store

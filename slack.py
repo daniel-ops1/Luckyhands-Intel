@@ -2,6 +2,9 @@ import os
 import re
 
 import httpx
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL", "")
@@ -25,20 +28,29 @@ def _to_mrkdwn(text: str) -> str:
     return text
 
 
+def _is_footer_heading(heading: str | None) -> bool:
+    if not heading:
+        return False
+    return "footer" in heading.lower()
+
+
 def md_to_blocks(brief_md: str, date_str: str, issue: int | str = "") -> list[dict]:
     blocks: list[dict] = [
         {
             "type": "header",
-            "text": {"type": "plain_text", "text": f"LuckyHands Intel Daily, {date_str}"},
+            "text": {"type": "plain_text", "text": f"LuckyHands Intel Daily  ·  {date_str}"},
         }
     ]
-    if issue:
+    issue_label = ""
+    if issue == 0 or issue == "0":
+        issue_label = "Issue 0 (test)  ·  Local ADK pipeline  ·  Ollama qwen-intel + Gemini 2.5 Flash"
+    elif issue:
+        issue_label = f"Issue {issue}  ·  Local ADK pipeline  ·  Ollama qwen-intel + Gemini 2.5 Flash"
+    if issue_label:
         blocks.append(
             {
                 "type": "context",
-                "elements": [
-                    {"type": "mrkdwn", "text": f"Issue {issue}  ·  Local ADK pipeline  ·  qwen2.5 14b"}
-                ],
+                "elements": [{"type": "mrkdwn", "text": issue_label}],
             }
         )
     blocks.append({"type": "divider"})
@@ -46,11 +58,19 @@ def md_to_blocks(brief_md: str, date_str: str, issue: int | str = "") -> list[di
     lines = brief_md.split("\n")
     section_lines: list[str] = []
     current_heading: str | None = None
+    footer_text_parts: list[str] = []
 
     def flush():
-        nonlocal section_lines, current_heading
+        nonlocal section_lines, current_heading, footer_text_parts
         if current_heading is None and not section_lines:
             return
+
+        if _is_footer_heading(current_heading):
+            footer_text_parts.extend(l.strip() for l in section_lines if l.strip())
+            section_lines = []
+            current_heading = None
+            return
+
         if current_heading:
             blocks.append(
                 {
@@ -58,7 +78,15 @@ def md_to_blocks(brief_md: str, date_str: str, issue: int | str = "") -> list[di
                     "text": {"type": "mrkdwn", "text": f"*{current_heading}*"},
                 }
             )
-        body = "\n".join(l for l in section_lines if l.strip())
+        body_lines = [l for l in section_lines if l.strip()]
+        spaced: list[str] = []
+        for ln in body_lines:
+            if spaced and ln.lstrip().startswith(("-", "*")) and not spaced[-1].lstrip().startswith(("-", "*")):
+                spaced.append("")
+            elif spaced and ln.lstrip().startswith(("-", "*")):
+                spaced.append("")
+            spaced.append(ln)
+        body = "\n".join(spaced)
         if body:
             body = _to_mrkdwn(body)
             for chunk_start in range(0, len(body), 2900):
@@ -87,13 +115,25 @@ def md_to_blocks(brief_md: str, date_str: str, issue: int | str = "") -> list[di
     if blocks and blocks[-1].get("type") == "divider":
         blocks.pop()
 
+    blocks.append({"type": "divider"})
+    if footer_text_parts:
+        footer_text = " ".join(footer_text_parts)
+        blocks.append(
+            {
+                "type": "context",
+                "elements": [{"type": "mrkdwn", "text": f"_{_to_mrkdwn(footer_text)}_"}],
+            }
+        )
     blocks.append(
         {
             "type": "context",
             "elements": [
                 {
                     "type": "mrkdwn",
-                    "text": "Not legal advice. Reply with corrections, they train the next brief.",
+                    "text": (
+                        f":memo: Reply to this thread with corrections. They train the next brief.  "
+                        f"·  :scales: Not legal advice. Verify any regulatory item with counsel before acting."
+                    ),
                 }
             ],
         }
