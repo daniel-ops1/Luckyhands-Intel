@@ -146,7 +146,7 @@ async def _run_pipeline(date_str: str) -> tuple[str, str, dict]:
             f"## Competitor moves\n\n{competitor}\n\n"
             f"## Market and product signals\n\n{market}\n\n"
             f"## On our radar\n\nno qualifying items today\n\n"
-            f"## Footer\n\nReply to this email with corrections. Corrections train the next brief.\n"
+            f"## Footer\n\nReply to this thread with corrections. They train the next brief.\n"
             "Not legal advice. Verify any regulatory item with counsel before acting on it.\n"
         )
     findings = {

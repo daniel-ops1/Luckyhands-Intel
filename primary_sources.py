@@ -179,6 +179,44 @@ def _normalize_bill_number(num: str) -> str:
     return "".join((num or "").upper().split())
 
 
+_PROVISION_OFF_TOPIC_TOKENS = (
+    "poker card room", "card room", "social card game", "social card games",
+    "pinochle", "gin rummy", "bridge", "euchre", "cribbage", "dominoes",
+    "checkers", "chess", "backgammon", "pool table", "darts",
+    "horse race", "horse racing", "racetrack", "pari mutuel",
+    "tribal compact", "tribal gaming compact",
+    "raffle", "charitable bingo", "bingo hall",
+)
+
+
+_PROVISION_ON_TOPIC_TOKENS = (
+    "sweepstakes", "sweeps", "social casino", "dual currency",
+    "prediction market", "event contract", "online sweepstakes",
+    "online gambling", "online gaming", "online casino", "internet gaming",
+    "virtual currency", "gold coin", "sweeps coin",
+    "payment processor", "money transmission",
+    "ag enforcement", "attorney general",
+)
+
+
+def _provisions_look_sweepstakes_relevant(text: str) -> bool:
+    """Strict post-grounding relevance check on key_provisions text.
+
+    If the grounded scope only mentions brick-and-mortar / off-topic gambling
+    terms with no online sweepstakes nexus, drop regardless of grounding's
+    own is_sweepstakes_relevant verdict (which sometimes guesses true on
+    anything gambling-adjacent).
+    """
+    t = (text or "").lower()
+    if not t:
+        return True
+    has_on = any(tok in t for tok in _PROVISION_ON_TOPIC_TOKENS)
+    has_off = any(tok in t for tok in _PROVISION_OFF_TOPIC_TOKENS)
+    if has_off and not has_on:
+        return False
+    return True
+
+
 def _enrich_bill_with_grounding(state: str, num: str, title: str) -> tuple[str, str]:
     """Live-ground authoritative facts for a bill via Gemini + Google Search.
 
@@ -198,6 +236,8 @@ def _enrich_bill_with_grounding(state: str, num: str, title: str) -> tuple[str, 
         return ("", "")
     if not facts.get("is_sweepstakes_relevant", True):
         return ("OFF_TOPIC", "")
+    if not _provisions_look_sweepstakes_relevant(facts.get("key_provisions", "")):
+        return ("OFF_TOPIC", "")
     status = (facts.get("status") or "").lower()
     enacted_via = facts.get("enacted_via") or ""
     if status in {"dead", "vetoed"} and not enacted_via:
@@ -215,6 +255,11 @@ _OFF_TOPIC_TITLE_TOKENS = (
     "tobacco", "vape", "telecom", "broadband", "energy", "utility",
     "appropriation", "appropriations", "audit", "ethics commission",
     "pension", "retirement", "civil service",
+    "poker card room", "card room", "card rooms", "social card game",
+    "social card games", "pinochle", "gin rummy", "bridge", "euchre",
+    "cribbage", "dominoes", "checkers", "chess", "backgammon",
+    "pari mutuel", "horse racing", "racetrack", "horse race",
+    "bingo hall", "charitable bingo", "raffle",
 )
 
 

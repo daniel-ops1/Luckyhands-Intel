@@ -116,11 +116,22 @@ def check_link_integrity(md: str) -> list[str]:
 _LOW_QUALITY_SOURCE_HOSTS = (
     "sweepskings.com",
     "casinorankr.com",
-    "sweepsy.com",
     "supplychaindigital.com",
     "stockmarketsignal.com",
     "newspatrolling.com",
     "casinonews.io",
+    "rotowire.com",
+    "bonusbell.com",
+    "sweepedia.com",
+    "tech-insider.org",
+    "kotaku.com",
+    "yardbarker.com",
+    "g-mnews.com",
+    "everything-pr.com",
+    "winthelottery.com",
+    "bitcoinchaser.com",
+    "brightsideofnews.com",
+    "coinranking.com",
 )
 
 
@@ -549,14 +560,14 @@ regulatory_researcher = _researcher(
     output_key="regulatory_findings",
     mandatory_queries=[
         f"state attorney general sweepstakes lawsuit cease and desist {_current_year()}",
-        f"Kentucky Russell Coleman sweepstakes VGW Kalshi Polymarket lawsuit",
+        f"Kentucky Coleman lawsuit VGW Kalshi Polymarket Franklin Circuit {_current_year()}",
         f"California AB 831 sweepstakes enforcement signed effective {_current_year()}",
         f"federal court sweepstakes ruling injunction TRO {_current_year()}",
-        f"CFTC prediction market Polymarket Kalshi investigation {_current_year()}",
+        f"CFTC prediction market preemption suit state Minnesota Kentucky {_current_year()}",
+        f"NACA Polymarket lawsuit DC Superior Court deceptive marketing {_current_year()}",
         f"FinCEN FTC sweepstakes payment processor enforcement {_current_year()}",
         f"state gaming commission sweepstakes advisory letter {_current_year()}",
-        f"sweepstakes class action lawsuit consumer protection {_current_year()}",
-        f"tribal gaming compact sweepstakes opposition NIGA {_current_year()}",
+        f"Michigan judge Kalshi prediction market ruling {_current_year()}",
         f"Illinois Gaming Board sweepstakes cease and desist {_current_year()}",
     ],
     intent="news",
@@ -583,9 +594,9 @@ competitor_researcher = _researcher(
         f"Crown Coins Mega Bonanza Hello Millions WOW Vegas {_current_year()}",
         f"Indiana sweepstakes operator exit list HB 1052 {_current_year()}",
         f"Iowa sweepstakes operator exit SF 2289 {_current_year()}",
-        f"GeoComply Xpoint sweepstakes vendor partnership {_current_year()}",
-        f"Sightline Trustly Worldpay sweepstakes payment processor {_current_year()}",
-        f"sweepstakes operator rebrand brand launch product {_current_year()}",
+        f"Maine LD 2007 sweepstakes operator exit {_current_year()}",
+        f"GeoComply Xpoint Sightline sweepstakes vendor partnership {_current_year()}",
+        f"sweepstakes operator security breach hack frontend vendor {_current_year()}",
     ],
     intent="semantic",
 )
@@ -607,13 +618,13 @@ market_researcher = _researcher(
         f"Eilers Krejcik sweepstakes revenue forecast {_current_year()}",
         f"sweepstakes casino market size revenue Vixio {_current_year()}",
         f"sweepstakes industry M&A acquisition funding {_current_year()}",
-        f"Kalshi Polymarket valuation funding round {_current_year()}",
-        f"prediction markets CFTC Kalshi Polymarket Minnesota {_current_year()}",
-        f"sweepstakes operator closure shutdown {_current_year()}",
+        f"Kalshi Polymarket valuation funding round trading volume {_current_year()}",
+        f"prediction markets CFTC state preemption suit ruling {_current_year()}",
+        f"Meta Arena prediction market app Zuckerberg Polymarket Kalshi {_current_year()}",
+        f"sweepstakes operator closure shutdown consolidation {_current_year()}",
         f"sweepstakes payment processor Visa Mastercard MCC {_current_year()}",
-        f"App Store sweepstakes social casino ranking {_current_year()}",
-        f"SBC Summit Americas sweepstakes social casino {_current_year()}",
-        f"sweepstakes class action lawsuit ruling settlement {_current_year()}",
+        f"Polymarket NACA lawsuit DC Superior deceptive marketing {_current_year()}",
+        f"Polymarket CFTC investigation marketing influencer probe {_current_year()}",
     ],
     intent="auto",
 )
@@ -726,7 +737,7 @@ Up to 4 items. Kalshi, Polymarket, Novig, Robinhood Event Contracts, ForecastEx,
 2 to 4 lower-confidence items. Each starts with `WARNING, single source.` then one sentence and source link. DO NOT duplicate items already in earlier sections.
 
 ## 9. Footer
-Reply to this email with corrections. Corrections train the next brief.
+Reply to this thread with corrections. They train the next brief.
 Not legal advice. Verify any regulatory item with counsel before acting on it.
 
 Hard rules.

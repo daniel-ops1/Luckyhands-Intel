@@ -34,6 +34,18 @@ def _is_footer_heading(heading: str | None) -> bool:
     return "footer" in heading.lower()
 
 
+def _et_timestamp() -> str:
+    """Production timestamp in ET, e.g. 'Sun, June 29 2026 at 4:12am ET'."""
+    try:
+        from dates import US_TZ
+        from datetime import datetime
+        now = datetime.now(tz=US_TZ)
+        return now.strftime("%a, %B %d %Y at %-I:%M%p ET")
+    except Exception:
+        from datetime import datetime
+        return datetime.now().strftime("%a, %B %d %Y at %-I:%M%p")
+
+
 def md_to_blocks(brief_md: str, date_str: str, issue: int | str = "") -> list[dict]:
     blocks: list[dict] = [
         {
@@ -42,10 +54,15 @@ def md_to_blocks(brief_md: str, date_str: str, issue: int | str = "") -> list[di
         }
     ]
     issue_label = ""
+    produced_at = _et_timestamp()
     if issue == 0 or issue == "0":
-        issue_label = "Issue 0 (test)  ·  Local ADK pipeline  ·  Ollama qwen-intel + Gemini 2.5 Flash"
+        issue_label = (
+            f"*Issue 0 of LuckyHands Daily Intel* (test)  ·  Produced {produced_at}"
+        )
     elif issue:
-        issue_label = f"Issue {issue}  ·  Local ADK pipeline  ·  Ollama qwen-intel + Gemini 2.5 Flash"
+        issue_label = (
+            f"*Issue {issue} of LuckyHands Daily Intel*  ·  Produced {produced_at}"
+        )
     if issue_label:
         blocks.append(
             {
@@ -124,6 +141,20 @@ def md_to_blocks(brief_md: str, date_str: str, issue: int | str = "") -> list[di
                 "elements": [{"type": "mrkdwn", "text": f"_{_to_mrkdwn(footer_text)}_"}],
             }
         )
+    issue_for_footer = ""
+    if issue == 0 or issue == "0":
+        issue_for_footer = "Issue 0 (test)"
+    elif issue:
+        issue_for_footer = f"Issue {issue}"
+    footer_meta = f"_LuckyHands Daily Intel  ·  {issue_for_footer}  ·  Produced {produced_at}_"
+    if not issue_for_footer:
+        footer_meta = f"_LuckyHands Daily Intel  ·  Produced {produced_at}_"
+    blocks.append(
+        {
+            "type": "context",
+            "elements": [{"type": "mrkdwn", "text": footer_meta}],
+        }
+    )
     blocks.append(
         {
             "type": "context",
